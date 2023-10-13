@@ -1,0 +1,47 @@
+version: '3.4'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.9-management
+    container_name: 'rabbitmq'
+    hostname: rabbitmq
+    ports:
+        - 5672:5672
+        - 15672:15672
+    expose:
+     - 5672
+     - 15672
+    volumes:
+        - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/
+        - ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
+    networks:
+        - rabbitmq_go_net
+  db:
+    image: postgres:16
+    hostname: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - ./tmp/db:/var/lib/postgresql/data
+      - ./create_table.sql:/docker-entrypoint-initdb.d/zcreate_table.sql
+    environment:
+      - POSTGRES_PASSWORD=user
+      - POSTGRES_USER=user
+      - POSTGRES_DB=orderDb
+    networks:
+    - rabbitmq_go_net 
+  orderprocessor:
+    image: ${DOCKER_REGISTRY-}orderprocessor
+    depends_on: 
+    - "db"
+    - "rabbitmq"
+    build:
+      context: .
+      dockerfile: OrderProcessor/Dockerfile
+    networks:
+    - rabbitmq_go_net 
+
+networks:
+  rabbitmq_go_net:
+    driver: bridge
+
